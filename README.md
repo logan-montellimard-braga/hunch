@@ -27,7 +27,7 @@ Drawing names from external sources:
 Options:
 
 
-![options](https://i.imgur.com/qDXvpjY.png)
+![options](http://i.imgur.com/GpaSVsV.png)
 
 
 ## Syntax
