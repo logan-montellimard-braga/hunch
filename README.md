@@ -1,4 +1,4 @@
-[![Circle CI](https://circleci.com/gh/loganbraga/hunch.svg?style=svg&circle-token=bd86bd1deecf32a401e762de7032989fb9b74c31)](https://circleci.com/gh/loganbraga/hunch)
+[![Circle CI](https://circleci.com/gh/loganbraga/hunch.svg?style=svg)](https://circleci.com/gh/loganbraga/hunch)
 # Hunch
 
 Hunch is a command-line, system-agnostic application that allows quick creation of file system entries with a custom DSL resembling CSS selectors.
