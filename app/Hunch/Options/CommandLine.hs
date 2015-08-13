@@ -11,10 +11,10 @@ import Hunch.Options.Data
 
 
 singleChar :: String -> ReadM Char
-singleChar s | length s == 0 = readerError "empty token"
-             | length s >  1 = readerError $
+singleChar s | null s       = readerError "empty token"
+             | length s > 1 = readerError $
                 "token is too long (max 1 char.): '" ++ s ++ "'"
-             | otherwise     = return $ head s
+             | otherwise    = return $ head s
 
 inputOpt :: Parser (Maybe String)
 inputOpt = optional . argument str $ metavar "INPUT"
