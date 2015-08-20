@@ -10,8 +10,8 @@ lexer :: Token.TokenParser ()
 lexer = Token.makeTokenParser grammar
   where
     ops = [">", "+", "*"]
-    grammar = emptyDef { Token.identStart = letter
-                       , Token.identLetter = alphaNum <|> noneOf " )(>+*="
+    grammar = emptyDef { Token.identStart      = letter
+                       , Token.identLetter     = noneOf " )(>+*="
                        , Token.reservedOpNames = ops
                        }
 
