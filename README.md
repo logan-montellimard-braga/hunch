@@ -58,6 +58,16 @@ Hunch treats every entry as a file by default. If it should be a directory:
 This allows you to write most expressions without consideration for the "file or directory?" question.
 If an entry is a directory without any children, just add a '/' at the end of its name.
 
+### Absolute path dilemma
+
+For now, you can't use absolute paths in Hunch syntax; an error will be raised before any processing. This behavior is intended.
+Absolute path in the context provided by Hunch are awkward: should they be allowed everywhere and screw logic with constructs like `"/home/foo" + "/tmp"` where Hunch operators are ignored ?
+Should they only be allowed in the root position ? If so, should constructs like `"/home/foo" + baz` be interpreted as creating "/home/foo" and "/home/foo/baz", or "/home/foo" and "./baz" ?
+And what about duplicate absolute paths ?
+
+As I didn't want to impose an arbitrary flawed view on Hunch syntax, the problem is, until a better solution arises, bypassed with the absolute paths interdiction
+and a command-line option, `-r`/`--root-dir`. By specifying a root directory (default "."), all operations will be processed inside this directory. It is equivalent to `cd`'ing into the directory before processing.
+
 ### Numbering syntax
 
 Numbering of duplicate entries uses a printf-like syntax. A given token (default `$`) will be replaced in group in entry names.
@@ -78,6 +88,7 @@ representing external sources in the form "source_id source_value", where 'sourc
 
 Hunch can be configured from command-line options:
 
++ `-r`, `--root-dir`: The base directory in which all Hunch actions should be processed. Default: ".".
 + `-p`, `--templates-path`: A directory containing template files. Setting this option will allow you to reference
 template files without specifying the same base path over and over again.
 + `-d`, `--delimiter`: A delimiter character or string, used to split external names. Default: ",".
@@ -114,7 +125,6 @@ Building from sources (cabal):
 ## TODO
 
 + Test suite
-+ Fix absolute path display in simulation mode.
 
 
 ## License
