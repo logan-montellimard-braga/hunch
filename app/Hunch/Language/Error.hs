@@ -5,23 +5,22 @@ module Hunch.Language.Error (
   , nestedErr, twoExpsErr, twoNumsErr, loneNumberErr
   ) where
 
+import Data.List (intercalate)
+
 
 indent :: String -> String
-indent str = unlines . map ("  " ++) $ lines str
-
-helpText :: String
-helpText = "Type `hunch --help` for more information on Hunch usage."
+indent str = intercalate "\n" . map ("  " ++) $ lines str
 
 logicalError :: String -> String
-logicalError msg = unlines [title, indent msg, helpText]
+logicalError msg = intercalate "\n" [title, indent msg]
   where
     title = "Logical error:"
 
 parseError :: Int -> String -> String
-parseError col msg = unlines [title, indent msg', helpText]
+parseError col msg = intercalate "\n" [title, indent msg']
   where
     title    = "Parse error at column " ++ show col ++ ":"
-    msg'     = unlines . map addDot $ filter (not . null) $ lines msg
+    msg'     = intercalate "\n" . map addDot $ filter (not . null) $ lines msg
     addDot s = if last s == '.' then s else s ++ "."
 
 -- Components used by Parsec showErrorMessages to generate error messages
@@ -36,7 +35,7 @@ errorMessageComponents = ( "or"
 --- Logical error messages ---
 ---
 numberErr :: String -> String
-numberErr msg = unlines [numErrHeader, msg, numErrFooter]
+numberErr msg = intercalate "\n" [numErrHeader, msg, numErrFooter]
   where
     numErrHeader = "Number literals can only be used with the repeat operator."
     numErrFooter = "Put the number between quotes if it should be an entry name."

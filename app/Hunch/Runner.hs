@@ -11,13 +11,14 @@ import Hunch.Language.Syntax
 import Hunch.Language.Parser
 import Hunch.Language.PrettyPrinter
 
-import Data.Version     (showVersion)
-import Control.Monad    (when, unless)
-import Control.Exception
-import System.Exit      (exitSuccess, exitFailure)
-import System.IO        (hPutStrLn, stderr)
-import System.FilePath  (combine, joinPath, isValid, isAbsolute)
-import System.Directory (doesFileExist, doesDirectoryExist, createDirectory, copyFile)
+import Data.Version      (showVersion)
+import Data.List         (intercalate)
+import Control.Monad     (when, unless)
+import Control.Exception (catch)
+import System.Exit       (exitSuccess, exitFailure)
+import System.IO         (hPutStrLn, stderr)
+import System.FilePath   (combine, joinPath, isValid, isAbsolute)
+import System.Directory  (doesFileExist, doesDirectoryExist, createDirectory, copyFile)
 
 -- Successfully terminate the program by printing a given message
 terminate :: String -> IO ()
@@ -25,14 +26,16 @@ terminate str = putStrLn str >> exitSuccess
 
 -- Forcefully exit the program by printing a given error message
 fatal :: String -> IO ()
-fatal str = hPutStrLn stderr ("(FATAL) " ++ str) >> exitFailure
+fatal str = hPutStrLn stderr ("(FATAL) " ++ str ++ helpText) >> exitFailure
+  where
+    helpText = "\n\nType `hunch --help` for more information on Hunch usage."
 
 -- Catch exception and print it as other errors
 withCatch :: IO () -> IO ()
 withCatch todo = catch todo recover
   where
     recover :: IOError -> IO ()
-    recover e = fatal $ unlines ["Runtime error:", "  " ++ show e]
+    recover e = fatal $ intercalate "\n" ["Runtime error:", "  " ++ show e]
 
 -- Execute a given IO action and logs the given message, if wanted.
 withLog :: Bool -> String -> IO () -> IO ()
@@ -144,7 +147,7 @@ formatErrors errs = introText ++ "\n" ++ errorList
   where
     introText        = "The following " ++ singularOrPlural ++ " encountered:"
     singularOrPlural = if length errs == 1 then "error was" else "errors were"
-    errorList        = unlines $ map ("   - " ++) errs
+    errorList        = intercalate "\n" $ map ("   - " ++) errs
 
 
 ---
