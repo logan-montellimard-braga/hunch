@@ -22,6 +22,14 @@ inputOpt = optional . argument str $ metavar "INPUT"
 sourcesOpt :: Parser [String]
 sourcesOpt = many . argument str $ metavar "SOURCES"
 
+rootDirOpt :: Parser String
+rootDirOpt = strOption $
+     long    "root-dir"
+  <> short   'r'
+  <> metavar "DIR"
+  <> value   ""
+  <> help    "Base directory for operations"
+
 templatesOpt :: Parser String
 templatesOpt = strOption $
      long    "templates-path"
@@ -84,6 +92,7 @@ parseOptions :: Parser Options
 parseOptions = Options <$>
          inputOpt
      <*> sourcesOpt
+     <*> rootDirOpt
      <*> templatesOpt
      <*> delimOpt
      <*> sigilOpt

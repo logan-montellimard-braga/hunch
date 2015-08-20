@@ -13,9 +13,10 @@ import Hunch.Language.PrettyPrinter
 
 import Data.Version     (showVersion)
 import Control.Monad    (when, unless)
+import Control.Exception
 import System.Exit      (exitSuccess, exitFailure)
 import System.IO        (hPutStrLn, stderr)
-import System.FilePath  (combine, joinPath, isValid)
+import System.FilePath  (combine, joinPath, isValid, isAbsolute)
 import System.Directory (doesFileExist, doesDirectoryExist, createDirectory, copyFile)
 
 -- Successfully terminate the program by printing a given message
@@ -26,6 +27,13 @@ terminate str = putStrLn str >> exitSuccess
 fatal :: String -> IO ()
 fatal str = hPutStrLn stderr ("(FATAL) " ++ str) >> exitFailure
 
+-- Catch exception and print it as other errors
+withCatch :: IO () -> IO ()
+withCatch todo = catch todo recover
+  where
+    recover :: IOError -> IO ()
+    recover e = fatal $ unlines ["Runtime error:", "  " ++ show e]
+
 -- Execute a given IO action and logs the given message, if wanted.
 withLog :: Bool -> String -> IO () -> IO ()
 withLog logB msg f = f >> when logB (putStrLn msg)
@@ -34,27 +42,26 @@ withLog logB msg f = f >> when logB (putStrLn msg)
 -- Die with the returned error message if any.
 withAST :: Options -> (FileSystem -> IO ()) -> IO ()
 withAST opts successFn =
-  case parseExp expr srcs sep token start of
+  case parseExp expr srcs root sep token start of
     Right tree  -> do
-      errors <- checkIntegrity (templates opts) tree
+      errors <- checkIntegrity True (templates opts) tree
       if null errors
          then successFn tree
          else fatal $ formatErrors errors
     Left errMsg -> fatal errMsg
-    where
-      (Just expr) = input opts
-      srcs        = sources opts
-      sep         = delimiter opts
-      token       = sigil opts
-      start       = startAt opts
+  where
+    (Just expr) = input opts
+    srcs        = sources opts
+    root        = rootDir opts
+    sep         = delimiter opts
+    token       = sigil opts
+    start       = startAt opts
 
 -- Write an empty file in target, or a file copied from the specified entry
 -- template if present.
-writeFileOrTpl :: FsEntry -> FilePath -> FilePath -> IO ()
-writeFileOrTpl (FsEntry _ _ Default) target _        = writeFile target ""
-writeFileOrTpl (FsEntry _ _ (Source tpl)) target dir = copyFile tpl' target
-  where
-    tpl' = dir `combine` tpl
+writeFileOrTpl :: FTemplate -> FilePath -> FilePath -> IO ()
+writeFileOrTpl Default      target _   = writeFile target ""
+writeFileOrTpl (Source tpl) target dir = copyFile (dir `combine` tpl) target
 
 -- Generic function to derive makeFile and makeDir functions.
 genericMake :: (FilePath -> IO Bool)
@@ -63,10 +70,10 @@ genericMake :: (FilePath -> IO Bool)
 genericMake checkFn writeFn opts base entry =
   unless (entry == currentDir) $ do
     let path       = joinPath base `combine` (_entryNameName . _entryName) entry
-        kind       = show . _entryKind $ entry
+        kindS      = show . _entryKind $ entry
         indent     = (++) $ replicate (length base * 3) ' '
-        createdMsg = kind ++ " created: " ++ path
-        existsMsg  = kind ++ " already exists: " ++ path
+        createdMsg = kindS ++ " created: " ++ path
+        existsMsg  = kindS ++ " already exists: " ++ path
         existsOMsg = createdMsg ++ " (overriden)"
 
         -- Directories are not overriden ; there's no point.
@@ -83,7 +90,7 @@ genericMake checkFn writeFn opts base entry =
 
 -- Create a file from a given entry.
 makeFile :: Options -> [FilePath] -> FsEntry -> IO ()
-makeFile = genericMake doesFileExist writeFileOrTpl
+makeFile = genericMake doesFileExist (writeFileOrTpl . _entryTmpl)
 
 -- Create a directory from a given entry.
 makeDir :: Options -> [FilePath] -> FsEntry -> IO ()
@@ -103,42 +110,41 @@ createTree opts base (Node entry children) = do
   mapM_ (createTree opts newBasePath) children
 
 -- Check if the given template exists, from base templaate dir tplDir.
-tplExists :: FilePath -> FileSystem -> IO String
-tplExists tplDir node =
-  if extractTpl node /= Default
-     then do
-       let path = tplDir `combine` (_entryTmplSource . extractTpl) node
-           name = _entryNameName . _entryName . rootLabel $ node
-           err  = "Template file '" ++ path ++ "' not found for file '" ++ name ++ "'"
-       exists <- doesFileExist path
-       return $ if exists then "" else err
-     else return ""
+getTplErrors :: FilePath -> FsEntry -> IO [String]
+getTplErrors tplDir e
+  | _entryTmpl e == Default = return []
+  | otherwise               = doesFileExist path >>= \p -> return [err | not p]
   where
-    extractTpl = _entryTmpl . rootLabel
+    path = tplDir `combine` (_entryTmplSource . _entryTmpl) e
+    err  = "Template file '" ++ path ++ "' not found for file '" ++ name ++ "'"
+    name = _entryNameName . _entryName $ e
 
--- Return errors if name is invalid
-getNameErrors :: FileSystem -> String
-getNameErrors node = if isValid filePath
-                        then ""
-                        else "Invalid name: '" ++ filePath ++ "'"
+-- Return errors if name is invalid or path is absolute
+getNameErrors :: Bool -> FsEntry -> [String]
+getNameErrors isRoot node = validMsg ++ absoluteMsg
   where
-    filePath = _entryNameName . _entryName . rootLabel $ node
+    validMsg    = [validErr | not . isValid $ filePath]
+    absoluteMsg = [absErr   | not isRoot && isAbsolute filePath]
+    filePath    = _entryNameName . _entryName $ node
+    validErr    = "Invalid name: '" ++ filePath ++ "'"
+    absErr      = "Absolute path: '" ++ filePath ++ "'"
 
 -- Check the integrity of a given file system, collecting errors recursively.
-checkIntegrity :: FilePath -> FileSystem -> IO [String]
-checkIntegrity tplDir fs = do
-  tplCheck <- tplExists tplDir fs
-  childrenErrors <- mapM (checkIntegrity tplDir) $ subForest fs
-  let nameCheck = getNameErrors fs
-      errors    = [nameCheck, tplCheck] ++ concat childrenErrors
-      errors'   = filter (not . null) errors
-  return errors'
+checkIntegrity :: Bool -> FilePath -> FileSystem -> IO [String]
+checkIntegrity isRoot tplDir fs = do
+  tplCheck <- getTplErrors tplDir $ rootLabel fs
+  childrenErrors <- mapM (checkIntegrity False tplDir) $ subForest fs
+  let nameCheck = getNameErrors isRoot $ rootLabel fs
+      errors    = concat [nameCheck, tplCheck, concat childrenErrors]
+  return errors
 
 -- Format list of errors to a string with a visual list of errors.
 formatErrors :: [String] -> String
-formatErrors errs = "The following errors were encountered:\n" ++ errorList
+formatErrors errs = introText ++ "\n" ++ errorList
   where
-    errorList = unlines $ map ("   - " ++) errs
+    introText        = "The following " ++ singularOrPlural ++ " encountered:"
+    singularOrPlural = if length errs == 1 then "error was" else "errors were"
+    errorList        = unlines $ map ("   - " ++) errs
 
 
 ---
@@ -151,8 +157,8 @@ runSimulation opts = withAST opts $ terminate . showTree
 runCreation :: Options -> IO ()
 runCreation opts = withAST opts $ \ast -> do
   let cr = if verbose opts then "\n" else ""
-  createTree opts [] ast
-  terminate (cr ++ "Done creating entries.")
+  withCatch $ createTree opts [] ast
+  terminate $ cr ++ "Done creating entries."
 
 printVersion :: Options -> IO ()
 printVersion opts = do

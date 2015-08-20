@@ -3,6 +3,7 @@ module Hunch.Options.Data where
 data Options = Options
   { input     :: Maybe String
   , sources   :: [String]
+  , rootDir   :: String
   , templates :: String
   , delimiter :: String
   , sigil     :: Char

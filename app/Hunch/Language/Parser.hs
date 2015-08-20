@@ -4,15 +4,16 @@ module Hunch.Language.Parser (
 
 import Text.Parsec
 import Text.Parsec.Expr
-import Text.Parsec.String     (Parser)
-import Text.Parsec.Error      (showErrorMessages, errorMessages)
-import Data.Tree              (unfoldTreeM)
-import Data.Map               (Map, fromList, findWithDefault)
-import Data.List              (genericReplicate, group, groupBy, sortBy, nubBy, partition)
-import Data.List.Split        (splitOn)
-import Data.Function          (on)
-import Text.Printf            (printf)
-import Control.Applicative    ((<$>), (<*), (*>))
+import Text.Parsec.String  (Parser)
+import Text.Parsec.Error   (showErrorMessages, errorMessages)
+import Data.Tree           (unfoldTreeM)
+import Data.Map            (Map, fromList, findWithDefault)
+import Data.List           (genericReplicate, group, groupBy, sortBy, nubBy, partition)
+import Data.List.Split     (splitOn)
+import Data.Function       (on)
+import Text.Printf         (printf)
+import System.FilePath     (combine)
+import Control.Applicative ((<$>), (<*), (*>))
 
 import Hunch.Language.Syntax
 import Hunch.Language.Lexer
@@ -27,7 +28,7 @@ import Hunch.Language.Error
 -- Decompose a file name into a tuple containing its base name
 -- and wether it is the name of a directory.
 decomposeName :: String -> (String, Bool)
-decomposeName str = (entryName, isDir)
+decomposeName str = (if str == "/" then str else entryName, isDir)
   where
     isDir      = not (null str) && (last str == '/')
     entryName  = if isDir then init str else str
@@ -148,10 +149,14 @@ convert (Left err) = Left $ parseError col msg
     col = sourceColumn . errorPos $ err
 
 -- Wrap root node into a "currentDir" (./) node if it's not already the case
-wrapRoot :: FileSystem -> FileSystem
-wrapRoot t@(Node entry _) = if entry == currentDir
-                               then t
-                               else Node currentDir [t]
+wrapRoot :: FilePath -> FileSystem -> FileSystem
+wrapRoot root fs@(Node e c)
+  | e == currentDir' = fs
+  | e == currentDir  = Node currentDir' c
+  | otherwise        = Node currentDir' [fs]
+  where
+    currentDir' = currentDir { _entryName = Name newName }
+    newName     = (_entryNameName . _entryName $ currentDir) `combine` root
 
 -- Clean the given tree by flattening trees whose rootLabel is the currentDir
 -- This effectively removes any unneeded nesting
@@ -267,14 +272,15 @@ replaceExtNames sources (Node entry children) = Node entry children'
 
 -- Public interface
 -- Parses a given string with above rules and transforms it
-parseExp :: String -> [String] -> String -> Char -> Int
+parseExp :: String -> [String] -> FilePath -> String -> Char -> Int
          -> Either String FileSystem
-parseExp input srcs sep sigil startAt = transform <$> ast
+parseExp input srcs root sep sigil startAt = transform <$> ast
   where
-    transform  = rename . cleanup
-    rename     = applyNumbering sigil startAt . replaceExtNames dict
-    dict       = sourcesToMap srcs sep
-    cleanup    = wrapRoot . cleanse
-    ast        = toTree =<< convert (parse parser parserName input)
-    parser     = spaces *> expressions <* eof
-    parserName = "<stdin>"
+    transform   = rename . cleanup
+    rename      = applyNumbering sigil startAt . replaceExtNames dict
+    dict        = sourcesToMap srcs sep
+    cleanup     = wrapRoot root . cleanse
+    ast         = toTree =<< convert parseResult
+    parseResult = parse parser parserName input
+    parser      = spaces *> expressions <* eof
+    parserName  = "<stdin>"
