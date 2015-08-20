@@ -90,7 +90,7 @@ showKind File      = "File"
 showEntry :: FsEntry -> String
 showEntry (FsEntry str k tpl) = show str ++ kindSuffix k ++ show tpl
   where
-    kindSuffix Directory = "/"
+    kindSuffix Directory = if (last . _entryNameName) str /= '/' then "/" else ""
     kindSuffix File      = ""
 
 showOp :: Op -> String
