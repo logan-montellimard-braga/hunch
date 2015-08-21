@@ -106,15 +106,17 @@ As well as the traditional `-h`/`--help` and `--version` switches.
 Hunch is written in Haskell 2010. You will need a Haskell distribution (such as Haskell Platform) and a
 build/package management tool like `cabal` or `stack`.
 
-Easy installation: `cabal install hunch`.
+#### Easy installation:
 
-Building from sources (Stack):
+Just run `cabal install hunch`.
+
+#### Building from sources (Stack):
 
 1. `stack setup`
 2. `stack build`
 3. (`stack install`)
 
-Building from sources (cabal):
+#### Building from sources (cabal):
 
 1. `cabal install --upgrade-dependencies --dependencies-only`
 2. `cabal configure`
