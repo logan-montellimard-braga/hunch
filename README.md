@@ -95,6 +95,8 @@ template files without specifying the same base path over and over again.
 + `-t`, `--number-token`: A token character used as a placeholder for numbering replacement. Default "$".
 + `-n`, `--start-at`: A number to start the numbering. Default: "0".
 + `-o`, `--override`: Switch. If a file in input expression already exists, override it, otherwise do nothing.
++ `-c`, `--no-check`: Switch. Do not run integrity tests on entries and template files (invalid names, template not found, ...). Switching on this option while not in
+simulation mode may result in runtime errors if entries or template files are ill-formed.
 + `-v`, `--verbose`: Switch. Print debugging information.
 + `-s`, `--simulate`: Switch. Print the preview of the resulting file system tree after parsing the given input, and exit.
 

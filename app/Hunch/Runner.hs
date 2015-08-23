@@ -47,7 +47,9 @@ withAST :: Options -> (FileSystem -> IO ()) -> IO ()
 withAST opts successFn =
   case parseExp expr srcs root sep token start of
     Right tree  -> do
-      errors <- checkIntegrity True (templates opts) tree
+      errors <- if shouldCheck
+                   then checkIntegrity True (templates opts) tree
+                   else return []
       if null errors
          then successFn tree
          else fatal $ formatErrors errors
@@ -59,6 +61,7 @@ withAST opts successFn =
     sep         = delimiter opts
     token       = sigil opts
     start       = startAt opts
+    shouldCheck = not . noCheck $ opts
 
 -- Write an empty file in target, or a file copied from the specified entry
 -- template if present.

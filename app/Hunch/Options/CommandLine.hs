@@ -71,6 +71,12 @@ overrideOpt = switch $
   <> short   'o'
   <> help    "Override existing files"
 
+noChecksOpt :: Parser Bool
+noChecksOpt = switch $
+     long    "no-check"
+  <> short   'c'
+  <> help    "Do not check input for invalid names or not found templates"
+
 verboseOpt :: Parser Bool
 verboseOpt = switch $
      long    "verbose"
@@ -98,6 +104,7 @@ parseOptions = Options <$>
      <*> sigilOpt
      <*> startAtOpt
      <*> overrideOpt
+     <*> noChecksOpt
      <*> verboseOpt
      <*> simulateOpt
      <*> versionOpt

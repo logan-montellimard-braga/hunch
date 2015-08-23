@@ -9,6 +9,7 @@ data Options = Options
   , sigil     :: Char
   , startAt   :: Int
   , override  :: Bool
+  , noCheck   :: Bool
   , verbose   :: Bool
   , simulate  :: Bool
   , version   :: Bool }
