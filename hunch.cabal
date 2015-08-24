@@ -26,6 +26,7 @@ executable hunch
                      , Hunch.Language.PrettyPrinter
                      , Hunch.Language.Error
                      , Hunch.Constants
+                     , Paths_hunch
   build-depends:       base >= 4 && < 5
                      , parsec >= 3.0
                      , containers
