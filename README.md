@@ -8,7 +8,7 @@ Features:
 + CSS selectors to navigate the file system
 + Custom numbering of duplicate entries
 + External names placeholders to draw file names from external sources
-+ Template utilities: create files from a base template instead of empty files.
++ Template utilities: create files and directories from base templates instead of empty entries
 + Simulation mode: preview the file system tree before creating entries
 
 ## Usage
@@ -40,8 +40,8 @@ the expression on the right side.
 is on the same file system location than the expression on the right side.
 + `*` stands for "repeat" or "times". It means that the expression at one side of the operator is
 repeated as many times as the number on the other side.
-+ `=` stands for "copy from" or "template". It means that the file on the left side should be copied from
-the file on the right side, instead of being created empty.
++ `=` stands for "copy from" or "template". It means that the file or directory on the left side should be copied from
+the file or directory on the right side, instead of being created empty. An error is raised if a file template is used for a directory, and conversely.
 + `_?NAME` stands for "take from" or "external source". It means that the name of the entry is not currently determined,
 but will be drawn from the external source "NAME" passed as argument.
 
@@ -89,8 +89,8 @@ representing external sources in the form "source_id source_value", where 'sourc
 Hunch can be configured from command-line options:
 
 + `-r`, `--root-dir`: The base directory in which all Hunch actions should be processed. Default: ".".
-+ `-p`, `--templates-path`: A directory containing template files. Setting this option will allow you to reference
-template files without specifying the same base path over and over again.
++ `-p`, `--templates-path`: A directory containing template files and directories. Setting this option will allow you to reference
+template files without specifying the same base path over and over again. You can manually overrie this setting by using an absolute path in a template construct.
 + `-d`, `--delimiter`: A delimiter character or string, used to split external names. Default: ",".
 + `-t`, `--number-token`: A token character used as a placeholder for numbering replacement. Default "$".
 + `-n`, `--start-at`: A number to start the numbering. Default: "0".
@@ -110,7 +110,7 @@ build/package management tool like `cabal` or `stack`.
 
 #### Easy installation:
 
-Just run `cabal install hunch`.
+Just run `cabal install hunch` (`cabal update` may be needed beforehand) or `stack install hunch`.
 
 #### Building from sources (Stack):
 

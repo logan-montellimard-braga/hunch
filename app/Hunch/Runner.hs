@@ -13,12 +13,12 @@ import Hunch.Language.PrettyPrinter
 
 import Data.Version      (showVersion)
 import Data.List         (intercalate)
-import Control.Monad     (when, unless)
+import Control.Monad     (when, unless, forM_)
 import Control.Exception (catch)
 import System.Exit       (exitSuccess, exitFailure)
 import System.IO         (hPutStrLn, stderr)
 import System.FilePath   (combine, joinPath, isValid, isAbsolute)
-import System.Directory  (doesFileExist, doesDirectoryExist, createDirectory, copyFile)
+import System.Directory
 
 -- Successfully terminate the program by printing a given message
 terminate :: String -> IO ()
@@ -63,11 +63,30 @@ withAST opts successFn =
     start       = startAt opts
     shouldCheck = not . noCheck $ opts
 
+-- Recursively copy a directory.
+-- No existence checks are done.
+copyDir ::  FilePath -> FilePath -> IO ()
+copyDir from to = do
+  createDirectoryIfMissing False to
+  entries <- getDirectoryContents from
+  let entries' = filter (`notElem` [".", ".."]) entries
+  forM_ entries' $ \name -> do
+    let from' = from `combine` name
+        to'   = to `combine` name
+    isDirectory <- doesDirectoryExist from'
+    if isDirectory then copyDir from' to' else copyFile from' to'
+
 -- Write an empty file in target, or a file copied from the specified entry
 -- template if present.
 writeFileOrTpl :: FTemplate -> FilePath -> FilePath -> IO ()
 writeFileOrTpl Default      target _   = writeFile target ""
 writeFileOrTpl (Source tpl) target dir = copyFile (dir `combine` tpl) target
+
+-- Create an empty dir in target, or a directory copied from the specified
+-- template dir if present.
+makeDirOrTpl :: FTemplate -> FilePath -> FilePath -> IO ()
+makeDirOrTpl Default      target _   = createDirectory target
+makeDirOrTpl (Source tpl) target dir = copyDir (dir `combine` tpl) target
 
 -- Generic function to derive makeFile and makeDir functions.
 genericMake :: (FilePath -> IO Bool)
@@ -100,7 +119,7 @@ makeFile = genericMake doesFileExist (writeFileOrTpl . _entryTmpl)
 
 -- Create a directory from a given entry.
 makeDir :: Options -> [FilePath] -> FsEntry -> IO ()
-makeDir = genericMake doesDirectoryExist $ \_ p _ -> createDirectory p
+makeDir = genericMake doesDirectoryExist (makeDirOrTpl . _entryTmpl)
 
 -- Create the given tree in the filesystem by recursively walking over its
 -- children.
@@ -118,12 +137,23 @@ createTree opts base (Node entry children) = do
 -- Check if the given template exists, from base templaate dir tplDir.
 getTplErrors :: FilePath -> FsEntry -> IO [String]
 getTplErrors tplDir e
-  | _entryTmpl e == Default = return []
-  | otherwise               = doesFileExist path >>= \p -> return [err | not p]
+  | _entryTmpl e == Default   = return []
+  | otherwise = do
+    fileExists <- doesFileExist path
+    dirExists  <- doesDirectoryExist path
+    return $ if _entryKind e == File
+                then if not fileExists
+                        then if dirExists then [errFDir] else [errF]
+                        else []
+                else if not dirExists
+                        then if fileExists then [errDFile] else [errD]
+                        else []
   where
-    path = tplDir `combine` (_entryTmplSource . _entryTmpl) e
-    err  = "Template file '" ++ path ++ "' not found for file '" ++ name ++ "'"
-    name = _entryNameName . _entryName $ e
+    path     = tplDir `combine` (_entryTmplSource . _entryTmpl) e
+    errFDir  = "Template '" ++ path ++ "' is a directory, expected a file"
+    errF     = "Template file '" ++ path ++ "' not found"
+    errDFile = "Template '" ++ path ++ "' is a file, expected a directory"
+    errD     = "Template directory '" ++ path ++ "' not found"
 
 -- Return errors if name is invalid or path is absolute
 getNameErrors :: Bool -> FsEntry -> [String]
