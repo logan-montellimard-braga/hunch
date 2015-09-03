@@ -1,5 +1,5 @@
 name:                  hunch
-version:               0.1.1
+version:               0.2.0
 synopsis:              CSS-like syntax for file system manipulation.
 description:           Hunch is a command-line, system-agnostic application that allows quick creation of file system entries with a custom DSL resembling CSS selectors.
 homepage:              https://github.com/loganbraga/hunch
